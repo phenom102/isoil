@@ -2,17 +2,16 @@
 $i=-1;
 //for($i=-125;$i>-156;$i--){
     //echo date("Y_m_d")."<br />";
+    require_once __DIR__ . '/../include/db.php';
+
     $yesterday = date("Y_m_d",strtotime("$i days"));
     $yesterday_sql = date('Y-m-d',strtotime("$i days"));
     echo $yesterday;
-    $ftp_host = "217.56.60.146";
-    $ftp_user = "isoil";
-    $ftp_password = "IsoilMid2023@1%";
 
     //Connect
-    echo "<br />Connecting to $ftp_host via FTP...";
-    $conn = ftp_connect($ftp_host,23021);
-    $login = ftp_login($conn, $ftp_user, $ftp_password);
+    echo "<br />Connecting to " . FTP_HOST . " via FTP...";
+    $conn = ftp_connect(FTP_HOST, FTP_PORT);
+    $login = ftp_login($conn, FTP_USER, FTP_PASSWORD);
 
     //
     //Enable PASV ( Note: must be done after ftp_login() )
@@ -32,13 +31,7 @@ $i=-1;
 
     $file_list = ftp_nlist($conn, "");
 
-    $serverName = "192.168.0.7";
-    $connectionOptions = [
-        "Database"=>"ISOIL",
-        "Uid"=>"sa",
-        "PWD"=>"Lora2022@1%"
-    ];
-    $conn_sql = sqlsrv_connect($serverName, $connectionOptions);
+    $conn_sql = get_db_connection();
     if ($conn_sql){
         //echo "connected";
         $sql = "SELECT * FROM RTU";

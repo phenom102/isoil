@@ -1,22 +1,17 @@
 <?php
-$ricerca_dispositivo = $_GET['dispositivo'];
-/*$ricerca_data = str_replace('/', '-', $ricerca_data);
-//$yesterday = date("d-m-Y",strtotime("-1 days"));
-$yesterday = date("d-m-Y",strtotime($ricerca_data));
-//$yesterday_sql = date("Y-m-d",strtotime("-1 days"));
-$yesterday_sql = date("Y-m-d",strtotime($ricerca_data));*/
-$serverName = "192.168.0.7";
-$connectionOptions = [
-    "Database"=>"ISOIL",
-    "Uid"=>"sa",
-    "PWD"=>"Lora2022@1%"
-];
-$conn = sqlsrv_connect($serverName, $connectionOptions);
-$sql2 = "SELECT * FROM RTU WHERE id = $ricerca_dispositivo ";
-$stmt2 = sqlsrv_query( $conn, $sql2 );
+require_once 'include/db.php';
+
+$ricerca_dispositivo = $_GET['dispositivo'] ?? 0;
+$conn = get_db_connection();
+
+// Secure query with parameters for RTU
+$sql2 = "SELECT * FROM RTU WHERE id = ? ";
+$params2 = array($ricerca_dispositivo);
+$stmt2 = sqlsrv_query( $conn, $sql2, $params2 );
 if( $stmt2 === false) {
     die( print_r( sqlsrv_errors(), true) );
 }
+$nome_dispositivo = "Sconosciuto";
 while( $row2 = sqlsrv_fetch_array( $stmt2, SQLSRV_FETCH_ASSOC) ) {
     $nome_dispositivo = $row2['NOME'];
 }
@@ -69,45 +64,10 @@ while( $row2 = sqlsrv_fetch_array( $stmt2, SQLSRV_FETCH_ASSOC) ) {
     <script src="assets/demo/demo.js"></script>
 
 
-    <!-- Custom styling -->
-    <style>
-        .page-header-form .input-group-addon,
-        .page-header-form .form-control {
-            background: rgba(0,0,0,.05);
-        }
-    </style>
-    <!-- / Custom styling -->
+    <?php include 'include/style_modern.php'; ?>
 </head>
 <body>
-<nav class="px-nav px-nav-left">
-    <button type="button" class="px-nav-toggle" data-toggle="px-nav">
-        <span class="px-nav-toggle-arrow"></span>
-        <span class="navbar-toggle-icon"></span>
-        <span class="px-nav-toggle-label font-size-11">HIDE MENU</span>
-    </button>
-
-    <ul class="px-nav-content">
-        <li class="px-nav-box b-t-1 p-a-2">
-            <a href="index.php" class="btn btn-primary btn-block btn-outline"><i class="px-nav-icon ion-ios-pulse-strong"></i>Dashboard ISOIL</a>
-        </li>
-        <li class="px-nav-box b-t-1 p-a-2">
-            <a href="ricerca.php" class="btn btn-primary btn-block btn-outline"><i class="px-nav-icon ion-ios-search"></i>Ricerca ISOIL</a>
-        </li>
-        <li class="px-nav-box b-t-1 p-a-2">
-            <a href="portate.php" class="btn btn-primary btn-block btn-outline"><i class="px-nav-icon fa fa-tint"></i>Portate Telecontrollo</a>
-        </li>
-        <li class="px-nav-box b-t-1 p-a-2">
-            <a href="portate_map.php" class="btn btn-primary btn-block btn-outline"><i class="px-nav-icon fa fa-map"></i>Portate Tel. Mappa</a>
-        </li>
-    </ul>
-</nav>
-
-<nav class="navbar px-navbar">
-    <!-- Header -->
-    <div class="navbar-header">
-        <a class="navbar-brand px-demo-brand" href="index.php"><span class="px-demo-logo bg-primary"><span class="px-demo-logo-1"></span><span class="px-demo-logo-2"></span><span class="px-demo-logo-3"></span><span class="px-demo-logo-4"></span><span class="px-demo-logo-5"></span><span class="px-demo-logo-6"></span><span class="px-demo-logo-7"></span><span class="px-demo-logo-8"></span><span class="px-demo-logo-9"></span></span>ISOIL</a>
-    </div>
-</nav>
+<?php include 'include/nav.php'; ?>
 
 <div class="px-content">
     <div class="page-header">
@@ -145,8 +105,9 @@ while( $row2 = sqlsrv_fetch_array( $stmt2, SQLSRV_FETCH_ASSOC) ) {
                     $i = 0;
                     if ($conn){
                         //echo "connected";
-                        $sql = "SELECT * FROM MISURAZIONI WHERE RTU_ID = $ricerca_dispositivo ORDER BY DATA asc ";
-                        $stmt = sqlsrv_query( $conn, $sql );
+                        $sql = "SELECT * FROM MISURAZIONI WHERE RTU_ID = ? ORDER BY DATA asc ";
+                        $params = array($ricerca_dispositivo);
+                        $stmt = sqlsrv_query( $conn, $sql, $params );
                         if( $stmt === false) {
                             die( print_r( sqlsrv_errors(), true) );
                         }
@@ -198,8 +159,7 @@ while( $row2 = sqlsrv_fetch_array( $stmt2, SQLSRV_FETCH_ASSOC) ) {
 
 <footer class="px-footer px-footer-bottom p-t-0">
     <hr class="page-wide-block">
-
-    <span class="text-muted">Copyright © 2026 CED Asis Salernitana reti ed impianti. Tutti i diritti riservati.</span>
+    <span class="text-muted"><?php echo APP_COPYRIGHT; ?></span>
 </footer>
 
 <!-- ==============================================================================

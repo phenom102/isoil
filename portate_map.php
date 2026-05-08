@@ -1,13 +1,9 @@
 <?php
+require_once 'include/db.php';
+
 $yesterday = date("d-m-Y",strtotime("-1 days"));
 $yesterday_sql = date("Y-m-d",strtotime("-1 days"));
-$serverName = "192.168.0.7";
-$connectionOptions = [
-        "Database"=>"IFIX",
-        "Uid"=>"sa",
-        "PWD"=>"Lora2022@1%"
-];
-$conn = sqlsrv_connect($serverName, $connectionOptions);
+$conn = get_db_connection(DB_NAME_IFIX);
 $coordinate = [];
 $righe = file(__DIR__ . "/coordinate_mappa.txt", FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
 
@@ -84,18 +80,13 @@ foreach ($righe as $riga) {
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
-    <!-- Custom styling -->
-    <style>
-        .page-header-form .input-group-addon,
-        .page-header-form .form-control {
-            background: rgba(0,0,0,.05);
-        }
-    </style>
-    <!-- / Custom styling -->
+    <?php include 'include/style_modern.php'; ?>
     <style>
         #map {
             width: 100%;
             height: 600px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
 
         /* Mobile */
@@ -105,51 +96,17 @@ foreach ($righe as $riga) {
             }
         }
         .leaflet-popup-content {
-            font-size: 16px;
+            font-size: 14px;
         }
 
         .leaflet-popup-content-wrapper {
-            padding: 10px 14px;
-        }
-
-        .leaflet-popup-tip {
-            width: 12px;
-            height: 12px;
+            padding: 5px 10px;
+            border-radius: 8px;
         }
     </style>
-
-
 </head>
 <body>
-<nav class="px-nav px-nav-left">
-    <button type="button" class="px-nav-toggle" data-toggle="px-nav">
-        <span class="px-nav-toggle-arrow"></span>
-        <span class="navbar-toggle-icon"></span>
-        <span class="px-nav-toggle-label font-size-11">HIDE MENU</span>
-    </button>
-
-    <ul class="px-nav-content">
-        <li class="px-nav-box b-t-1 p-a-2">
-            <a href="index.php" class="btn btn-primary btn-block btn-outline"><i class="px-nav-icon ion-ios-pulse-strong"></i>Dashboard ISOIL</a>
-        </li>
-        <li class="px-nav-box b-t-1 p-a-2">
-            <a href="ricerca.php" class="btn btn-primary btn-block btn-outline"><i class="px-nav-icon ion-ios-search"></i>Ricerca ISOIL</a>
-        </li>
-        <li class="px-nav-box b-t-1 p-a-2">
-            <a href="portate.php" class="btn btn-primary btn-block btn-outline"><i class="px-nav-icon fa fa-tint"></i>Portate Telecontrollo</a>
-        </li>
-        <li class="px-nav-box b-t-1 p-a-2">
-            <a href="portate_map.php" class="btn btn-primary btn-block btn-outline"><i class="px-nav-icon fa fa-map"></i>Portate Tel. Mappa</a>
-        </li>
-    </ul>
-</nav>
-
-<nav class="navbar px-navbar">
-    <!-- Header -->
-    <div class="navbar-header">
-        <a class="navbar-brand px-demo-brand" href="index.php"><span class="px-demo-logo bg-primary"><span class="px-demo-logo-1"></span><span class="px-demo-logo-2"></span><span class="px-demo-logo-3"></span><span class="px-demo-logo-4"></span><span class="px-demo-logo-5"></span><span class="px-demo-logo-6"></span><span class="px-demo-logo-7"></span><span class="px-demo-logo-8"></span><span class="px-demo-logo-9"></span></span>ISOIL</a>
-    </div>
-</nav>
+<?php include 'include/nav.php'; ?>
 
 <div class="px-content">
     <div class="page-header">
@@ -250,8 +207,7 @@ print_r($coordinate);
 
 <footer class="px-footer px-footer-bottom p-t-0">
     <hr class="page-wide-block">
-
-    <span class="text-muted">Copyright © 2026 CED Asis Salernitana reti ed impianti. Tutti i diritti riservati.</span>
+    <span class="text-muted"><?php echo APP_COPYRIGHT; ?></span>
 </footer>
 
 <!-- ==============================================================================

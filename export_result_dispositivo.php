@@ -1,17 +1,16 @@
 <?php
-$ricerca_dispositivo = $_GET['dispositivo'];
-$serverName = "192.168.0.7";
-$connectionOptions = [
-    "Database"=>"ISOIL",
-    "Uid"=>"sa",
-    "PWD"=>"Lora2022@1%"
-];
-$conn = sqlsrv_connect($serverName, $connectionOptions);
-$sql2 = "SELECT * FROM RTU WHERE id = $ricerca_dispositivo ";
-$stmt2 = sqlsrv_query( $conn, $sql2 );
+require_once 'include/db.php';
+
+$ricerca_dispositivo = $_GET['dispositivo'] ?? 0;
+$conn = get_db_connection();
+
+$sql2 = "SELECT * FROM RTU WHERE id = ? ";
+$params2 = array($ricerca_dispositivo);
+$stmt2 = sqlsrv_query( $conn, $sql2, $params2 );
 if( $stmt2 === false) {
     die( print_r( sqlsrv_errors(), true) );
 }
+$nome_dispositivo = "Sconosciuto";
 while( $row2 = sqlsrv_fetch_array( $stmt2, SQLSRV_FETCH_ASSOC) ) {
     $nome_dispositivo = $row2['NOME'];
 }
@@ -49,8 +48,9 @@ while( $row2 = sqlsrv_fetch_array( $stmt2, SQLSRV_FETCH_ASSOC) ) {
         $i = 0;
         if ($conn){
             //echo "connected";
-            $sql = "SELECT * FROM MISURAZIONI WHERE RTU_ID = $ricerca_dispositivo ORDER BY DATA asc ";
-            $stmt = sqlsrv_query( $conn, $sql );
+            $sql = "SELECT * FROM MISURAZIONI WHERE RTU_ID = ? ORDER BY DATA asc ";
+            $params = array($ricerca_dispositivo);
+            $stmt = sqlsrv_query( $conn, $sql, $params );
             if( $stmt === false) {
                 die( print_r( sqlsrv_errors(), true) );
             }
