@@ -1,17 +1,13 @@
 <?php
-$ricerca_data = $_GET['ricerca-data'];
+require_once 'include/db.php';
+
+$ricerca_data = $_GET['ricerca-data'] ?? date("d-m-Y", strtotime("-1 days"));
 $ricerca_data = str_replace('/', '-', $ricerca_data);
-//$yesterday = date("d-m-Y",strtotime("-1 days"));
+
 $yesterday = date("d-m-Y",strtotime($ricerca_data));
-//$yesterday_sql = date("Y-m-d",strtotime("-1 days"));
 $yesterday_sql = date("Y-m-d",strtotime($ricerca_data));
-$serverName = "192.168.0.7";
-$connectionOptions = [
-    "Database"=>"ISOIL",
-    "Uid"=>"sa",
-    "PWD"=>"Lora2022@1%"
-];
-$conn = sqlsrv_connect($serverName, $connectionOptions);
+
+$conn = get_db_connection();
 ?>
 <!DOCTYPE html>
 <html>
@@ -57,45 +53,10 @@ $conn = sqlsrv_connect($serverName, $connectionOptions);
 
     <script src="assets/demo/demo.js"></script>
 
-    <!-- Custom styling -->
-    <style>
-        .page-header-form .input-group-addon,
-        .page-header-form .form-control {
-            background: rgba(0,0,0,.05);
-        }
-    </style>
-    <!-- / Custom styling -->
+    <?php include 'include/style_modern.php'; ?>
 </head>
 <body>
-<nav class="px-nav px-nav-left">
-    <button type="button" class="px-nav-toggle" data-toggle="px-nav">
-        <span class="px-nav-toggle-arrow"></span>
-        <span class="navbar-toggle-icon"></span>
-        <span class="px-nav-toggle-label font-size-11">HIDE MENU</span>
-    </button>
-
-    <ul class="px-nav-content">
-        <li class="px-nav-box b-t-1 p-a-2">
-            <a href="index.php" class="btn btn-primary btn-block btn-outline"><i class="px-nav-icon ion-ios-pulse-strong"></i>Dashboard ISOIL</a>
-        </li>
-        <li class="px-nav-box b-t-1 p-a-2">
-            <a href="ricerca.php" class="btn btn-primary btn-block btn-outline"><i class="px-nav-icon ion-ios-search"></i>Ricerca ISOIL</a>
-        </li>
-        <li class="px-nav-box b-t-1 p-a-2">
-            <a href="portate.php" class="btn btn-primary btn-block btn-outline"><i class="px-nav-icon fa fa-tint"></i>Portate Telecontrollo</a>
-        </li>
-        <li class="px-nav-box b-t-1 p-a-2">
-            <a href="portate_map.php" class="btn btn-primary btn-block btn-outline"><i class="px-nav-icon fa fa-map"></i>Portate Tel. Mappa</a>
-        </li>
-    </ul>
-</nav>
-
-<nav class="navbar px-navbar">
-    <!-- Header -->
-    <div class="navbar-header">
-        <a class="navbar-brand px-demo-brand" href="index.php"><span class="px-demo-logo bg-primary"><span class="px-demo-logo-1"></span><span class="px-demo-logo-2"></span><span class="px-demo-logo-3"></span><span class="px-demo-logo-4"></span><span class="px-demo-logo-5"></span><span class="px-demo-logo-6"></span><span class="px-demo-logo-7"></span><span class="px-demo-logo-8"></span><span class="px-demo-logo-9"></span></span>ISOIL</a>
-    </div>
-</nav>
+<?php include 'include/nav.php'; ?>
 
 <div class="px-content">
     <div class="page-header">
@@ -137,8 +98,9 @@ $conn = sqlsrv_connect($serverName, $connectionOptions);
                     $j = 0;
                     if ($conn){
                         //echo "connected";
-                        $sql = "SELECT * FROM MISURAZIONI WHERE DATA = '$yesterday_sql'";
-                        $stmt = sqlsrv_query( $conn, $sql );
+                        $sql = "SELECT * FROM MISURAZIONI WHERE DATA = ?";
+                        $params = array($yesterday_sql);
+                        $stmt = sqlsrv_query( $conn, $sql, $params );
                         if( $stmt === false) {
                             die( print_r( sqlsrv_errors(), true) );
                         }
@@ -147,14 +109,16 @@ $conn = sqlsrv_connect($serverName, $connectionOptions);
                             $id_temp_rtu = $row['RTU_ID'];
                             $array_rtu[$i] = $id_temp_rtu;
                             $i++;
-                            $sql2 = "SELECT * FROM RTU WHERE id = $id_temp_rtu ORDER BY NOME ASC ";
-                            $stmt2 = sqlsrv_query( $conn, $sql2 );
+                            $sql2 = "SELECT * FROM RTU WHERE id = ? ORDER BY NOME ASC ";
+                            $params2 = array($id_temp_rtu);
+                            $stmt2 = sqlsrv_query( $conn, $sql2, $params2 );
                             if( $stmt2 === false) {
                                 die( print_r( sqlsrv_errors(), true) );
                             }
                             while( $row2 = sqlsrv_fetch_array( $stmt2, SQLSRV_FETCH_ASSOC) ) {
-                                $sql5 = "SELECT TOP 1 * FROM MISURAZIONI WHERE RTU_ID = $row2[ID] ORDER BY DATA desc ";
-                                $stmt5 = sqlsrv_query( $conn, $sql5 );
+                                $sql5 = "SELECT TOP 1 * FROM MISURAZIONI WHERE RTU_ID = ? ORDER BY DATA desc ";
+                                $params5 = array($row2['ID']);
+                                $stmt5 = sqlsrv_query( $conn, $sql5, $params5 );
                                 if( $stmt5 === false) {
                                     die( print_r( sqlsrv_errors(), true) );
                                 }
@@ -177,17 +141,24 @@ $conn = sqlsrv_connect($serverName, $connectionOptions);
                     }else{
                         die(print_r(sqlsrv_errors(), true));
                     }
-                    $valoriArray = implode(",",$array_rtu);
-                    $sql3 = "SELECT * FROM RTU WHERE id NOT IN ($valoriArray)";
-                    $stmt3 = sqlsrv_query( $conn, $sql3 );
+                    if (isset($array_rtu) && count($array_rtu) > 0) {
+                        $placeholders = implode(',', array_fill(0, count($array_rtu), '?'));
+                        $sql3 = "SELECT * FROM RTU WHERE id NOT IN ($placeholders)";
+                        $params3 = $array_rtu;
+                    } else {
+                        $sql3 = "SELECT * FROM RTU";
+                        $params3 = array();
+                    }
+                    $stmt3 = sqlsrv_query( $conn, $sql3, $params3 );
                     if( $stmt3 === false) {
                         die( print_r( sqlsrv_errors(), true) );
                     }
                     while( $row3 = sqlsrv_fetch_array( $stmt3, SQLSRV_FETCH_ASSOC) ) {
                         $array_rtu_result[$j] = $row3['ID'];
                         $j++;
-                        $sql6 = "SELECT TOP 1 * FROM MISURAZIONI WHERE RTU_ID = $row3[ID] ORDER BY DATA desc ";
-                        $stmt6 = sqlsrv_query( $conn, $sql6 );
+                        $sql6 = "SELECT TOP 1 * FROM MISURAZIONI WHERE RTU_ID = ? ORDER BY DATA desc ";
+                        $params6 = array($row3['ID']);
+                        $stmt6 = sqlsrv_query( $conn, $sql6, $params6 );
                         if( $stmt6 === false) {
                             die( print_r( sqlsrv_errors(), true) );
                         }
@@ -207,8 +178,8 @@ $conn = sqlsrv_connect($serverName, $connectionOptions);
 
                     }
                     //print_r($array_rtu_result);
-                    $rtu_ok_count = count($array_rtu);
-                    $rtu_no_count = count($array_rtu_result);
+                    $rtu_ok_count = isset($array_rtu) ? count($array_rtu) : 0;
+                    $rtu_no_count = isset($array_rtu_result) ? count($array_rtu_result) : 0;
                     echo "<span class='badge badge-success'>Misurazioni ricevute &nbsp;".$rtu_ok_count."</span>&nbsp; &nbsp;";
                     echo "<span class='badge badge-danger'>Misurazioni non ricevute &nbsp;".$rtu_no_count."</span><br><br>";
                     ?>
@@ -222,8 +193,7 @@ $conn = sqlsrv_connect($serverName, $connectionOptions);
 
 <footer class="px-footer px-footer-bottom p-t-0">
     <hr class="page-wide-block">
-
-    <span class="text-muted">Copyright © 2026 CED Asis Salernitana reti ed impianti. Tutti i diritti riservati.</span>
+    <span class="text-muted"><?php echo APP_COPYRIGHT; ?></span>
 </footer>
 
 <!-- ==============================================================================
