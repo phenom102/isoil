@@ -89,15 +89,18 @@ $conn = get_db_connection();
                         <th>MATRICOLA</th>
                         <th>RTU</th>
                         <th>NOME</th>
-                        <th>MISURAZIONE mc</th>
+                        <th>ULTIMA TRASMISSIONE</th>
+                        <th>MISURAZIONE (mc)</th>
+                        <th>STATO</th>
                     </tr>
                     </thead>
                     <tbody>
                     <?php
                     $i = 0;
                     $j = 0;
+                    $array_rtu = [];
+                    $array_rtu_result = [];
                     if ($conn){
-                        //echo "connected";
                         $sql = "SELECT * FROM MISURAZIONI WHERE DATA = ?";
                         $params = array($yesterday_sql);
                         $stmt = sqlsrv_query( $conn, $sql, $params );
@@ -122,6 +125,7 @@ $conn = get_db_connection();
                                 if( $stmt5 === false) {
                                     die( print_r( sqlsrv_errors(), true) );
                                 }
+                                $data_ultima_mis_ok = "N/D";
                                 while( $row5 = sqlsrv_fetch_array( $stmt5, SQLSRV_FETCH_ASSOC) ) {
                                     $data_ultima_mis_ok = date_format($row5['DATA'] ,"d-m-Y");
                                 }
@@ -133,7 +137,9 @@ $conn = get_db_connection();
                             <td>".$row2['MATRICOLA']."</td>
                             <td>".$row2['RTU']."</td>
                             <td>".$row2['NOME']."</td>
+                            <td>".$data_ultima_mis_ok."</td>
                             <td>".number_format($row['MISURAZIONE'], 0, '', '')."</td>
+                            <td class='text-center'><span class='label label-success'>RICEVUTA</span></td>
                            </tr>";
                             }
                         }
@@ -141,7 +147,8 @@ $conn = get_db_connection();
                     }else{
                         die(print_r(sqlsrv_errors(), true));
                     }
-                    if (isset($array_rtu) && count($array_rtu) > 0) {
+
+                    if (count($array_rtu) > 0) {
                         $placeholders = implode(',', array_fill(0, count($array_rtu), '?'));
                         $sql3 = "SELECT * FROM RTU WHERE id NOT IN ($placeholders)";
                         $params3 = $array_rtu;
@@ -162,6 +169,7 @@ $conn = get_db_connection();
                         if( $stmt6 === false) {
                             die( print_r( sqlsrv_errors(), true) );
                         }
+                        $data_ultima_mis_no = "MAI";
                         while( $row6 = sqlsrv_fetch_array( $stmt6, SQLSRV_FETCH_ASSOC) ) {
                             $data_ultima_mis_no = date_format($row6['DATA'] ,"d-m-Y");
                         }
@@ -169,22 +177,38 @@ $conn = get_db_connection();
 
                         echo "<tr class='odd gradeX'>
                         <td><a href='result_dispositivo.php?dispositivo=$row3[ID]'><span class='badge badge-danger'>".$row3['ID']."</span></a></td>
-                        <td><span class='badge badge-danger'>".$row3['POD']."</span></td>
-                        <td><span class='badge badge-danger'>".$row3['MATRICOLA']."</span></td>
-                        <td><span class='badge badge-danger'>".$row3['RTU']."</span></td>
-                        <td><span class='badge badge-danger'>".$row3['NOME']."</span></td>
-                        <td><span class='badge badge-danger'>NESSUNA MISURAZIONE RICEVUTA</span></td>
+                        <td><span class='text-danger'>".$row3['POD']."</span></td>
+                        <td><span class='text-danger'>".$row3['MATRICOLA']."</span></td>
+                        <td><span class='text-danger'>".$row3['RTU']."</span></td>
+                        <td><span class='text-danger'>".$row3['NOME']."</span></td>
+                        <td><span class='text-danger'>".$data_ultima_mis_no."</span></td>
+                        <td><span class='text-danger'>ASSENTE</span></td>
+                        <td class='text-center'><span class='label label-danger'>NON RICEVUTA</span></td>
                        </tr>";
 
                     }
-                    //print_r($array_rtu_result);
-                    $rtu_ok_count = isset($array_rtu) ? count($array_rtu) : 0;
-                    $rtu_no_count = isset($array_rtu_result) ? count($array_rtu_result) : 0;
-                    echo "<span class='badge badge-success'>Misurazioni ricevute &nbsp;".$rtu_ok_count."</span>&nbsp; &nbsp;";
-                    echo "<span class='badge badge-danger'>Misurazioni non ricevute &nbsp;".$rtu_no_count."</span><br><br>";
                     ?>
                     </tbody>
                 </table>
+            </div>
+
+            <div class="m-t-2">
+                <?php
+                $rtu_ok_count = count($array_rtu);
+                $rtu_no_count = count($array_rtu_result);
+                ?>
+                <a href="javascript:void(0)" id="filter-received" class="btn btn-success btn-outline btn-rounded">
+                    <i class="fa fa-check-circle"></i> Misurazioni ricevute &nbsp;<span class="label label-success"><?php echo $rtu_ok_count; ?></span>
+                </a>
+                &nbsp; &nbsp;
+                <a href="javascript:void(0)" id="filter-missing" class="btn btn-danger btn-outline btn-rounded">
+                    <i class="fa fa-times-circle"></i> Misurazioni non ricevute &nbsp;<span class="label label-danger"><?php echo $rtu_no_count; ?></span>
+                </a>
+                &nbsp; &nbsp;
+                <a href="javascript:void(0)" id="filter-reset" class="btn btn-default btn-outline btn-rounded">
+                    <i class="fa fa-refresh"></i> Reset Filtro
+                </a>
+            </div>
             </div>
 
         </div>
@@ -212,9 +236,32 @@ $conn = get_db_connection();
     // Initialize DataTables
 
     $(function() {
-        $('#datatables').dataTable();
-        $('#datatables_wrapper .table-caption').text('Uploads');
+        var table = $('#datatables').DataTable({
+            "language": {
+                "url": "//cdn.datatables.net/plug-ins/1.10.20/i18n/Italian.json"
+            },
+            "pageLength": 25,
+            "order": [[ 4, "asc" ]], // Ordina per Nome
+            "columnDefs": [
+                { "orderable": false, "targets": [7] } // Disabilita ordinamento su colonna Stato
+            ]
+        });
+
+        $('#datatables_wrapper .table-caption').text('Elenco Dispositivi e Misurazioni');
         $('#datatables_wrapper .dataTables_filter input').attr('placeholder', 'Cerca...');
+
+        // Filtri personalizzati
+        $('#filter-received').on('click', function() {
+            table.column(7).search('^RICEVUTA$', true, false).draw();
+        });
+
+        $('#filter-missing').on('click', function() {
+            table.column(7).search('^NON RICEVUTA$', true, false).draw();
+        });
+
+        $('#filter-reset').on('click', function() {
+            table.column(7).search('').draw();
+        });
     });
 </script>
 
