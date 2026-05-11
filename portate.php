@@ -154,10 +154,17 @@ $conn = get_db_connection(DB_NAME_IFIX);
     // Initialize DataTables
 
     $(function() {
-        $('#datatables').dataTable();
+        $('#datatables').DataTable({
+            "language": {
+                "url": "//cdn.datatables.net/plug-ins/1.10.20/i18n/Italian.json"
+            },
+            "pageLength": 10
+        });
         $('#datatables_wrapper .table-caption').text('Letture real-time');
         $('#datatables_wrapper .dataTables_filter input').attr('placeholder', 'Cerca...');
 
+        // Add active class to sidebar
+        $('#nav-portate').addClass('active');
     });
 </script>
 

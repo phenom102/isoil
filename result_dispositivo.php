@@ -71,22 +71,18 @@ while( $row2 = sqlsrv_fetch_array( $stmt2, SQLSRV_FETCH_ASSOC) ) {
 
 <div class="px-content">
     <div class="page-header">
-        <div class="row">
-            <div class="col-md-4 text-xs-center text-md-left text-nowrap">
-                <h1><i class="page-header-icon ion-ios-pulse-strong"></i>Dashboard</h1>
-            </div>
-
-            <hr class="page-wide-block visible-xs visible-sm">
-
-            <!-- Spacer -->
-            <div class="m-b-2 visible-xs visible-sm clearfix"></div>
-
-        </div>
+        <h1><i class="page-header-icon ion-ios-pulse-strong"></i>Dettaglio Dispositivo</h1>
     </div>
     <div class="panel">
         <div class="panel-heading">
-            <div class="panel-title">Dati rilevati per il dispositivo: <?php echo $nome_dispositivo;?></div>
-            <div align="right"><a target="_blank" href="export_result_dispositivo.php?dispositivo=<?php echo $ricerca_dispositivo;?>" class="btn btn-primary">Esporta</a></div>
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="panel-title">Dispositivo: <?php echo $nome_dispositivo;?></div>
+                </div>
+                <div class="col-md-4 text-md-right">
+                    <a target="_blank" href="export_result_dispositivo.php?dispositivo=<?php echo $ricerca_dispositivo;?>" class="btn btn-primary btn-sm"><i class="fa fa-download"></i> Esporta</a>
+                </div>
+            </div>
         </div>
         <div class="panel-body">
 
@@ -178,8 +174,13 @@ while( $row2 = sqlsrv_fetch_array( $stmt2, SQLSRV_FETCH_ASSOC) ) {
     // Initialize DataTables
 
     $(function() {
-        $('#datatables').dataTable();
-        $('#datatables_wrapper .table-caption').text('Uploads');
+        $('#datatables').DataTable({
+            "language": {
+                "url": "//cdn.datatables.net/plug-ins/1.10.20/i18n/Italian.json"
+            },
+            "pageLength": 10
+        });
+        $('#datatables_wrapper .table-caption').text('Storico Misurazioni');
         $('#datatables_wrapper .dataTables_filter input').attr('placeholder', 'Cerca...');
     });
 </script>

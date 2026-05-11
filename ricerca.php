@@ -139,9 +139,8 @@ $conn = get_db_connection();
     // Initialize DataTables
 
     $(function() {
-        $('#datatables').dataTable();
-        $('#datatables_wrapper .table-caption').text('Uploads');
-        $('#datatables_wrapper .dataTables_filter input').attr('placeholder', 'Cerca...');
+        // Add active class to sidebar
+        $('#nav-ricerca').addClass('active');
     });
 </script>
 
