@@ -6,22 +6,22 @@
     </button>
 
     <ul class="px-nav-content">
-        <li class="px-nav-box p-a-2">
+        <li class="px-nav-box p-a-2" id="nav-dashboard">
             <a href="index.php" class="btn btn-primary btn-block btn-outline">
                 <i class="px-nav-icon ion-ios-pulse-strong"></i> Dashboard
             </a>
         </li>
-        <li class="px-nav-box p-a-2">
+        <li class="px-nav-box p-a-2" id="nav-ricerca">
             <a href="ricerca.php" class="btn btn-primary btn-block btn-outline">
                 <i class="px-nav-icon ion-ios-search"></i> Ricerca
             </a>
         </li>
-        <li class="px-nav-box p-a-2">
+        <li class="px-nav-box p-a-2" id="nav-portate">
             <a href="portate.php" class="btn btn-primary btn-block btn-outline">
                 <i class="px-nav-icon fa fa-tint"></i> Portate Real-time
             </a>
         </li>
-        <li class="px-nav-box p-a-2">
+        <li class="px-nav-box p-a-2" id="nav-map">
             <a href="portate_map.php" class="btn btn-primary btn-block btn-outline">
                 <i class="px-nav-icon fa fa-map"></i> Mappa Portate
             </a>

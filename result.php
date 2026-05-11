@@ -58,27 +58,102 @@ $conn = get_db_connection();
 <body>
 <?php include 'include/nav.php'; ?>
 
+<?php
+$rows_received = [];
+$rows_missing = [];
+$array_rtu = [];
+$array_rtu_result = [];
+
+if ($conn) {
+    // 1. Fetch received measurements
+    $sql = "SELECT m.*, r.POD, r.MATRICOLA, r.RTU, r.NOME, r.ID as RTU_ID_REAL
+            FROM MISURAZIONI m
+            INNER JOIN RTU r ON m.RTU_ID = r.id
+            WHERE m.DATA = ?";
+    $params = array($yesterday_sql);
+    $stmt = sqlsrv_query($conn, $sql, $params);
+    if ($stmt === false) die(print_r(sqlsrv_errors(), true));
+
+    while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+        $rtu_id = $row['RTU_ID_REAL'];
+        $array_rtu[] = $rtu_id;
+
+        $sql5 = "SELECT TOP 1 DATA FROM MISURAZIONI WHERE RTU_ID = ? ORDER BY DATA desc";
+        $stmt5 = sqlsrv_query($conn, $sql5, array($rtu_id));
+        $last_trans = "N/D";
+        if ($r5 = sqlsrv_fetch_array($stmt5, SQLSRV_FETCH_ASSOC)) {
+            $last_trans = date_format($r5['DATA'], "d-m-Y");
+        }
+        sqlsrv_free_stmt($stmt5);
+
+        $row['last_transmission'] = $last_trans;
+        $rows_received[] = $row;
+    }
+    sqlsrv_free_stmt($stmt);
+
+    // 2. Fetch missing units
+    if (count($array_rtu) > 0) {
+        $placeholders = implode(',', array_fill(0, count($array_rtu), '?'));
+        $sql3 = "SELECT * FROM RTU WHERE id NOT IN ($placeholders)";
+        $params3 = $array_rtu;
+    } else {
+        $sql3 = "SELECT * FROM RTU";
+        $params3 = array();
+    }
+    $stmt3 = sqlsrv_query($conn, $sql3, $params3);
+    if ($stmt3 === false) die(print_r(sqlsrv_errors(), true));
+
+    while ($row3 = sqlsrv_fetch_array($stmt3, SQLSRV_FETCH_ASSOC)) {
+        $array_rtu_result[] = $row3['ID'];
+
+        $sql6 = "SELECT TOP 1 DATA FROM MISURAZIONI WHERE RTU_ID = ? ORDER BY DATA desc";
+        $stmt6 = sqlsrv_query($conn, $sql6, array($row3['ID']));
+        $last_trans = "MAI";
+        if ($r6 = sqlsrv_fetch_array($stmt6, SQLSRV_FETCH_ASSOC)) {
+            $last_trans = date_format($r6['DATA'], "d-m-Y");
+        }
+        sqlsrv_free_stmt($stmt6);
+
+        $row3['last_transmission'] = $last_trans;
+        $rows_missing[] = $row3;
+    }
+    sqlsrv_free_stmt($stmt3);
+}
+
+$rtu_ok_count = count($array_rtu);
+$rtu_no_count = count($array_rtu_result);
+?>
+
 <div class="px-content">
     <div class="page-header">
-        <div class="row">
-            <div class="col-md-4 text-xs-center text-md-left text-nowrap">
-                <h1><i class="page-header-icon ion-ios-pulse-strong"></i>Dashboard</h1>
-            </div>
-
-            <hr class="page-wide-block visible-xs visible-sm">
-
-            <!-- Spacer -->
-            <div class="m-b-2 visible-xs visible-sm clearfix"></div>
-
-        </div>
+        <h1><i class="page-header-icon ion-ios-pulse-strong"></i>Dashboard Ricerca</h1>
     </div>
 
     <div class="panel">
         <div class="panel-heading">
-            <div class="panel-title">Dati rilevati il <?php echo $yesterday;?> alle ore 00.05</div>
-            <div align="right"><a target="_blank" href="export_result.php?ricerca-data=<?php echo $yesterday;?>" class="btn btn-primary">Esporta</a></div>
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="panel-title">Dati rilevati il <?php echo $yesterday;?> alle ore 00.05</div>
+                </div>
+                <div class="col-md-4 text-md-right">
+                    <a target="_blank" href="export_result.php?ricerca-data=<?php echo $yesterday;?>" class="btn btn-primary btn-sm"><i class="fa fa-download"></i> Esporta</a>
+                </div>
+            </div>
         </div>
         <div class="panel-body">
+
+            <div class="filter-section">
+                <span class="text-muted m-r-2"><i class="fa fa-filter"></i> Filtra per stato:</span>
+                <a href="javascript:void(0)" id="filter-received" class="btn btn-success btn-outline btn-rounded btn-sm">
+                    <i class="fa fa-check-circle"></i> Ricevute <span class="badge badge-success"><?php echo $rtu_ok_count; ?></span>
+                </a>
+                <a href="javascript:void(0)" id="filter-missing" class="btn btn-danger btn-outline btn-rounded btn-sm">
+                    <i class="fa fa-times-circle"></i> Non ricevute <span class="badge badge-danger"><?php echo $rtu_no_count; ?></span>
+                </a>
+                <a href="javascript:void(0)" id="filter-reset" class="btn btn-default btn-outline btn-rounded btn-sm">
+                    <i class="fa fa-refresh"></i> Reset
+                </a>
+            </div>
 
             <div class="table-primary">
                 <table class="table table-striped table-bordered" id="datatables">
@@ -95,120 +170,35 @@ $conn = get_db_connection();
                     </tr>
                     </thead>
                     <tbody>
-                    <?php
-                    $i = 0;
-                    $j = 0;
-                    $array_rtu = [];
-                    $array_rtu_result = [];
-                    if ($conn){
-                        $sql = "SELECT * FROM MISURAZIONI WHERE DATA = ?";
-                        $params = array($yesterday_sql);
-                        $stmt = sqlsrv_query( $conn, $sql, $params );
-                        if( $stmt === false) {
-                            die( print_r( sqlsrv_errors(), true) );
-                        }
-
-                        while( $row = sqlsrv_fetch_array( $stmt, SQLSRV_FETCH_ASSOC) ) {
-                            $id_temp_rtu = $row['RTU_ID'];
-                            $array_rtu[$i] = $id_temp_rtu;
-                            $i++;
-                            $sql2 = "SELECT * FROM RTU WHERE id = ? ORDER BY NOME ASC ";
-                            $params2 = array($id_temp_rtu);
-                            $stmt2 = sqlsrv_query( $conn, $sql2, $params2 );
-                            if( $stmt2 === false) {
-                                die( print_r( sqlsrv_errors(), true) );
-                            }
-                            while( $row2 = sqlsrv_fetch_array( $stmt2, SQLSRV_FETCH_ASSOC) ) {
-                                $sql5 = "SELECT TOP 1 * FROM MISURAZIONI WHERE RTU_ID = ? ORDER BY DATA desc ";
-                                $params5 = array($row2['ID']);
-                                $stmt5 = sqlsrv_query( $conn, $sql5, $params5 );
-                                if( $stmt5 === false) {
-                                    die( print_r( sqlsrv_errors(), true) );
-                                }
-                                $data_ultima_mis_ok = "N/D";
-                                while( $row5 = sqlsrv_fetch_array( $stmt5, SQLSRV_FETCH_ASSOC) ) {
-                                    $data_ultima_mis_ok = date_format($row5['DATA'] ,"d-m-Y");
-                                }
-                                sqlsrv_free_stmt( $stmt5);
-
-                                echo "<tr class='odd gradeX'>
-                            <td><a href='result_dispositivo.php?dispositivo=$row2[ID]'><span class='badge badge-success'>".$row2['ID']."</span></a></td>
-                            <td>".$row2['POD']."</td>
-                            <td>".$row2['MATRICOLA']."</td>
-                            <td>".$row2['RTU']."</td>
-                            <td>".$row2['NOME']."</td>
-                            <td>".$data_ultima_mis_ok."</td>
-                            <td>".number_format($row['MISURAZIONE'], 0, '', '')."</td>
+                    <?php foreach ($rows_received as $row): ?>
+                        <tr class='odd gradeX'>
+                            <td><a href='result_dispositivo.php?dispositivo=<?php echo $row['RTU_ID_REAL']; ?>'><span class='badge badge-success'><?php echo $row['RTU_ID_REAL']; ?></span></a></td>
+                            <td><?php echo $row['POD']; ?></td>
+                            <td><?php echo $row['MATRICOLA']; ?></td>
+                            <td><?php echo $row['RTU']; ?></td>
+                            <td><?php echo $row['NOME']; ?></td>
+                            <td><?php echo $row['last_transmission']; ?></td>
+                            <td><?php echo number_format($row['MISURAZIONE'], 0, '', ''); ?></td>
                             <td class='text-center'><span class='label label-success'>RICEVUTA</span></td>
-                           </tr>";
-                            }
-                        }
-                        sqlsrv_free_stmt( $stmt);
-                    }else{
-                        die(print_r(sqlsrv_errors(), true));
-                    }
+                        </tr>
+                    <?php endforeach; ?>
 
-                    if (count($array_rtu) > 0) {
-                        $placeholders = implode(',', array_fill(0, count($array_rtu), '?'));
-                        $sql3 = "SELECT * FROM RTU WHERE id NOT IN ($placeholders)";
-                        $params3 = $array_rtu;
-                    } else {
-                        $sql3 = "SELECT * FROM RTU";
-                        $params3 = array();
-                    }
-                    $stmt3 = sqlsrv_query( $conn, $sql3, $params3 );
-                    if( $stmt3 === false) {
-                        die( print_r( sqlsrv_errors(), true) );
-                    }
-                    while( $row3 = sqlsrv_fetch_array( $stmt3, SQLSRV_FETCH_ASSOC) ) {
-                        $array_rtu_result[$j] = $row3['ID'];
-                        $j++;
-                        $sql6 = "SELECT TOP 1 * FROM MISURAZIONI WHERE RTU_ID = ? ORDER BY DATA desc ";
-                        $params6 = array($row3['ID']);
-                        $stmt6 = sqlsrv_query( $conn, $sql6, $params6 );
-                        if( $stmt6 === false) {
-                            die( print_r( sqlsrv_errors(), true) );
-                        }
-                        $data_ultima_mis_no = "MAI";
-                        while( $row6 = sqlsrv_fetch_array( $stmt6, SQLSRV_FETCH_ASSOC) ) {
-                            $data_ultima_mis_no = date_format($row6['DATA'] ,"d-m-Y");
-                        }
-                        sqlsrv_free_stmt( $stmt6);
-
-                        echo "<tr class='odd gradeX'>
-                        <td><a href='result_dispositivo.php?dispositivo=$row3[ID]'><span class='badge badge-danger'>".$row3['ID']."</span></a></td>
-                        <td><span class='text-danger'>".$row3['POD']."</span></td>
-                        <td><span class='text-danger'>".$row3['MATRICOLA']."</span></td>
-                        <td><span class='text-danger'>".$row3['RTU']."</span></td>
-                        <td><span class='text-danger'>".$row3['NOME']."</span></td>
-                        <td><span class='text-danger'>".$data_ultima_mis_no."</span></td>
-                        <td><span class='text-danger'>ASSENTE</span></td>
-                        <td class='text-center'><span class='label label-danger'>NON RICEVUTA</span></td>
-                       </tr>";
-
-                    }
-                    ?>
+                    <?php foreach ($rows_missing as $row3): ?>
+                        <tr class='odd gradeX'>
+                            <td><a href='result_dispositivo.php?dispositivo=<?php echo $row3['ID']; ?>'><span class='badge badge-danger'><?php echo $row3['ID']; ?></span></a></td>
+                            <td><span class='text-danger'><?php echo $row3['POD']; ?></span></td>
+                            <td><span class='text-danger'><?php echo $row3['MATRICOLA']; ?></span></td>
+                            <td><span class='text-danger'><?php echo $row3['RTU']; ?></span></td>
+                            <td><span class='text-danger'><?php echo $row3['NOME']; ?></span></td>
+                            <td><span class='text-danger'><?php echo $row3['last_transmission']; ?></span></td>
+                            <td><span class='text-danger'>ASSENTE</span></td>
+                            <td class='text-center'><span class='label label-danger'>NON RICEVUTA</span></td>
+                        </tr>
+                    <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>
 
-            <div class="m-t-2">
-                <?php
-                $rtu_ok_count = count($array_rtu);
-                $rtu_no_count = count($array_rtu_result);
-                ?>
-                <a href="javascript:void(0)" id="filter-received" class="btn btn-success btn-outline btn-rounded">
-                    <i class="fa fa-check-circle"></i> Misurazioni ricevute &nbsp;<span class="label label-success"><?php echo $rtu_ok_count; ?></span>
-                </a>
-                &nbsp; &nbsp;
-                <a href="javascript:void(0)" id="filter-missing" class="btn btn-danger btn-outline btn-rounded">
-                    <i class="fa fa-times-circle"></i> Misurazioni non ricevute &nbsp;<span class="label label-danger"><?php echo $rtu_no_count; ?></span>
-                </a>
-                &nbsp; &nbsp;
-                <a href="javascript:void(0)" id="filter-reset" class="btn btn-default btn-outline btn-rounded">
-                    <i class="fa fa-refresh"></i> Reset Filtro
-                </a>
-            </div>
             </div>
 
         </div>
@@ -240,7 +230,7 @@ $conn = get_db_connection();
             "language": {
                 "url": "//cdn.datatables.net/plug-ins/1.10.20/i18n/Italian.json"
             },
-            "pageLength": 25,
+            "pageLength": 10,
             "order": [[ 4, "asc" ]], // Ordina per Nome
             "columnDefs": [
                 { "orderable": false, "targets": [7] } // Disabilita ordinamento su colonna Stato
@@ -262,6 +252,9 @@ $conn = get_db_connection();
         $('#filter-reset').on('click', function() {
             table.column(7).search('').draw();
         });
+
+        // Add active class to sidebar
+        $('#nav-ricerca').addClass('active');
     });
 </script>
 

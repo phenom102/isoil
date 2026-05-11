@@ -283,6 +283,10 @@ print_r($coordinate);
         map.fitBounds(bounds, { padding: [50, 50] });
     }
 
+    // Add active class to sidebar
+    $(function() {
+        $('#nav-map').addClass('active');
+    });
 </script>
 </body>
 </html>
